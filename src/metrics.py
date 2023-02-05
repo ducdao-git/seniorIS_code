@@ -1,4 +1,4 @@
-def get_iou(p_box_cord, t_box_cord):
+def get_box_iou(t_box_cord, p_box_cord):
     p_box = {
         "x1": p_box_cord[0],
         "y1": p_box_cord[1],
@@ -38,9 +38,18 @@ def get_iou(p_box_cord, t_box_cord):
     return intersection_area / (p_box_area + t_box_area - intersection_area)
 
 
-assert get_iou([0, 0, 2, 2], [0, 0, 2, 2]) == 1
-assert get_iou([0, 0, 2, 2], [1, 0, 2, 2]) == 0.5
-assert get_iou([0, 0, 2, 2], [1, 1, 2, 2]) == 0.25
+assert get_box_iou([0, 0, 2, 2], [0, 0, 2, 2]) == 1
+assert get_box_iou([1, 0, 2, 2], [0, 0, 2, 2]) == 0.5
+assert get_box_iou([1, 1, 2, 2], [0, 0, 2, 2]) == 0.25
 
-assert get_iou([0, 0, 1, 1], [0, 1, 2, 2]) == 0
-assert get_iou([0, 0, 1, 1], [2, 2, 3, 3]) == 0
+assert get_box_iou([0, 1, 2, 2], [0, 0, 1, 1]) == 0
+assert get_box_iou([2, 2, 3, 3], [0, 0, 1, 1]) == 0
+
+# the get_box_iou is not perfect, let say we have 2 truth boxes, one with
+# (0, 0, 4, 4) and one with (0, 2, 4, 4). If the predict box is
+# (0, 1, 4, 4), then iou will higher for pair (0, 0, 4, 4) compare to
+# (0, 2, 4, 4). The math make sense, but in reality, is this the result that
+# we want?
+
+print(get_box_iou([0, 0, 4, 4], [0, 1, 4, 4]))
+print(get_box_iou([0, 2, 4, 4], [0, 1, 4, 4]))

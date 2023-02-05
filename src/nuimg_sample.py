@@ -27,7 +27,17 @@ class NuImgSample:
             )[0]
         ]
 
-        if nuim_mrcnn_label_only:
+        # import json
+        # with open("../outputs/objs_ann_0.json", "w") as outfile:
+        #     json.dump(self.objs_ann[0], outfile)
+        #
+        # with open("../outputs/nuimg_category.json", "w") as outfile:
+        #     for i, cat in enumerate(self.nuimg.category):
+        #         cat["nuimg_cat_ind"] = i
+        #     json.dump(self.nuimg.category, outfile)
+
+        self.nuim_mrcnn_label_only = nuim_mrcnn_label_only
+        if self.nuim_mrcnn_label_only:
             supported_objs_ann = list()
 
             for obj in self.objs_ann:
@@ -72,6 +82,13 @@ class NuImgSample:
         return objs_cat
 
     def get_objs_mrcnn_category(self):
+        if self.nuim_mrcnn_label_only is False:
+            print(
+                "nuim_mrcnn_label_only set to False. "
+                "Thus return get_objs_category from nuimg"
+            )
+            return self.get_objs_category()
+
         objs_cat_token = self.get_objs_category_token()
         objs_cat = list()
 
@@ -79,48 +96,3 @@ class NuImgSample:
             objs_cat.append(nuim_mrcnn_label_mapping[cat_token])
 
         return objs_cat
-
-
-# --------------------------------------------------------------------------- #
-# def main():
-#     import matplotlib.pyplot as plt
-#     from nuimages import NuImages
-#     from torchvision.io import read_image
-#     from torchvision.transforms import functional as torch_func
-#
-#     nuim = NuImages(
-#         dataroot="../input/nuImage",
-#         version="v1.0-mini",
-#         verbose=False,
-#         lazy=True,
-#     )
-#
-#     sample_0 = nuim.sample[0]
-#     sample_0 = NuImgSample(nuimg=nuim, sample_token=sample_0['token'])
-#
-#     sample_0_path = sample_0.get_sample_img_path()
-#     sample_0_int = read_image(sample_0_path)
-#
-#     plt.imshow(torch_func.to_pil_image(sample_0_int))
-#     plt.show()
-#
-#
-# main()
-#
-# import torch
-
-#
-# import torchvision.transforms.functional as F
-#
-# from torchvision.utils import draw_bounding_boxes
-#
-# from torchvision.io import read_image
-#
-# scene_int = read_image(im_path)
-#
-# boxes = torch.tensor(obj_bbox_in_img, dtype=torch.float)
-# colors = ["blue"] * len(obj_bbox_in_img)
-# result = draw_bounding_boxes(scene_int, boxes, colors=colors, width=5)
-#
-# plt.imshow(np.asarray(F.to_pil_image(result)))
-# plt.show()

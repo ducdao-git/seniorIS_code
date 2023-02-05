@@ -16,6 +16,9 @@ computation_device = torch.device(
 
 
 def main(_index):
+    torch.set_printoptions(profile="full")
+    torch.set_printoptions(linewidth=10000)
+
     # ------------ get the image ------------ #
     nuim = NuImages(
         dataroot=nuImages_dataroot,
@@ -65,10 +68,10 @@ def main(_index):
         nuim_mrcnn_label_only=True,
     )
 
-    print("--------- predicted_boxes ---------\n", len(p_bboxes), p_bboxes, "\n")
-    print("--------- predicted_labels ---------\n", len(p_labels), p_labels, "\n")
-    print("--------- predicted_scores ---------\n", len(p_scores), p_scores, "\n")
-    print("--------- predicted_masks ---------\n", len(p_masks), "\n")
+    print("------- predicted_boxes -------\n", len(p_bboxes), p_bboxes, "\n")
+    print("------- predicted_labels -------\n", len(p_labels), p_labels, "\n")
+    print("------- predicted_scores -------\n", len(p_scores), p_scores, "\n")
+    print("------- predicted_masks -------\n", len(p_masks), "\n")
 
     p_bboxes = torch.tensor(np.array(p_bboxes), dtype=torch.float)
     p_labels = [
