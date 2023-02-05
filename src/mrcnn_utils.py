@@ -22,11 +22,11 @@ def get_mask_rcnn(device):
 
 
 def get_mrcnn_outputs(
-    mrcnn_model,
-    mrcnn_weights,
-    image,
-    thresh_hold=0.95,
-    nuim_mrcnn_label_only: bool = False,
+        mrcnn_model,
+        mrcnn_weights,
+        image,
+        thresh_hold=0.95,
+        nuim_mrcnn_label_only: bool = False,
 ):
     with torch.no_grad():
         # pass of the image to the model without gradient calculation step
@@ -41,6 +41,14 @@ def get_mrcnn_outputs(
     boxes = list(outputs[0]["boxes"].detach().cpu().numpy())
     masks = list(outputs[0]["masks"].detach().cpu().numpy())
     # masks = list(outputs[0]["masks"].squeeze().detach().cpu().numpy())
+
+    # import numpy as np
+    # print_masks = torch.tensor(np.array(masks))
+    # torch.set_printoptions(profile="full")
+    # print(print_masks.size())
+    # print(len(boxes))
+
+    # print(print_masks[0][0])
 
     scores = [score for score in scores if score >= thresh_hold]
     labels = labels[: len(scores)]
@@ -61,7 +69,6 @@ def get_mrcnn_outputs(
             masks.pop(index)
 
     return scores, labels, boxes, masks
-
 
 # def main():
 #     import matplotlib.pyplot as plt

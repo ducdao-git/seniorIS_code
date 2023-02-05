@@ -41,6 +41,31 @@ def main(_index):
     t_bboxes = sample_img.get_objs_bbox()  # truth bounding boxes
     t_bboxes = torch.tensor(np.array(t_bboxes), dtype=torch.float)
 
+    semantic_masks, instance_masks = nuim.get_segmentation(
+        sample_img.get_keycam_token()
+    )
+
+    semantic_masks_write = list()
+    semantic_class_set = set()
+    for row in semantic_masks:
+        row_set = set(row)
+        semantic_class_set = semantic_class_set.union(row_set)
+        if 17 in row:
+            semantic_masks_write.append(row)
+
+    file = open('../outputs/semantic_masks.txt', 'w')
+    file.write(str(torch.tensor(semantic_masks_write)))
+    file.close()
+    print(f"clases in semantic mask: {semantic_class_set}")
+
+    # file = open('../outputs/instance_masks.txt', 'w')
+    # file.write(str(torch.tensor(instance_masks)).replace(", ", ""))
+    # file.close()
+    #
+    # print(len(sample_img.get_objs_category_token()))
+    # print(len(nuim.category), nuim.category)
+    # print()
+
     t_labels = sample_img.get_objs_mrcnn_category()
     print("--------- truth_label ---------\n", len(t_labels), t_labels)
     print()
@@ -78,6 +103,17 @@ def main(_index):
         label for label in p_labels
         # f"{label}: {score}" for label, score in zip(labels, scores)
     ]
+
+    # p_masks.size() = [obj_num, 1, row_num, col_num]
+    # p_masks[<obj_ind>][1][row_ind][col_ind] = prob that the pixel is the object
+
+    # p_masks = torch.tensor(np.array(p_masks))
+    # torch.set_printoptions(profile="full")
+    # print(p_masks.size())
+    #
+    # for i, row in enumerate(p_masks[0][0][540:545]):
+    #     if any(row > 0.997):
+    #         print(f"row {i}: {row > 0.997}")
 
     if len(p_bboxes) > 0:
         img = draw_bounding_boxes(
