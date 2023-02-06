@@ -27,15 +27,6 @@ class NuImgSample:
             )[0]
         ]
 
-        # import json
-        # with open("../outputs/objs_ann_0.json", "w") as outfile:
-        #     json.dump(self.objs_ann[0], outfile)
-        #
-        # with open("../outputs/nuimg_category.json", "w") as outfile:
-        #     for i, cat in enumerate(self.nuimg.category):
-        #         cat["nuimg_cat_ind"] = i
-        #     json.dump(self.nuimg.category, outfile)
-
         self.nuim_mrcnn_label_only = nuim_mrcnn_label_only
         if self.nuim_mrcnn_label_only:
             supported_objs_ann = list()
