@@ -1,67 +1,85 @@
+from truth_class import TruthClass
+from predict_class import PredictClass
+
+
 def preds_choose_truths_map(
-        t_labels: list, t_boxes: list,
-        p_labels: list, p_boxes: list,
+        truth_objs: list[TruthClass], pred_objs: list[PredictClass],
         threshold=0.5
 ):
+    """
+    This greedy method take a list of predictions assuming the predictions
+    are sort from high confident to low confident in the list. For each
+    prediction, the algorithm find the best fit truth box and store the
+    t_box and p_box in a dict. It also made the box map to background if they
+    not fit above the threshold.
+
+    return: list of dict. The return list have the same order as the p_boxes
+    arg (from prediction with the highest confident to lowest). The return
+    dict in the list has form:
+    {
+        iou_score: <float> repr intersection over union of p_box and t_box
+        pred_obj: <PredictClass> repr a pred object -- has the highest iou
+            with the truth_obj compare to other truth obj
+        truth_obj: <TruthClass> repr a truth object -- has the highest iou
+            with the pred_obj compare to other pred obj
+    }
+    """
     if threshold <= 0 or threshold > 1:
         raise ValueError(f"threshold must in (0, 1]")
 
-    ordered_mapping = list()
-    for i in range(len(p_labels)):
-        p_box = p_boxes[i]
-        highest_iou = -1  # highest iou between a t_box and a p_box
-        highest_iou_ind = -1  # index of t_box have the highest iou with curr p_box
+    pred_truth_index_map = dict()
+    pred_index_iou_map = dict()
+    for i in range(len(pred_objs)):
+        highest_iou = 0
+        highest_truth_index = None
 
-        if len(t_labels) == 0:
-            ordered_mapping.append({
-                "t_cat": "background",
-                "t_box": None,
-                "p_cat": p_labels[i],
-                "p_box": p_boxes[i],
-                "iou_score": None,
-            })
-            continue
+        for j in range(len(truth_objs)):
+            iou_score = get_box_iou(
+                t_box_cord=truth_objs[j].t_bbox,
+                p_box_cord=pred_objs[i].p_bbox,
+            )
 
-        for j in range(len(t_labels)):
-            t_box = t_boxes[j]
+            if iou_score > highest_iou:
+                if j in pred_truth_index_map.values():
+                    continue
 
-            iou = get_box_iou(t_box, p_box)
-            if highest_iou < iou:
-                highest_iou = iou
-                highest_iou_ind = j
+                highest_iou = iou_score
+                highest_truth_index = j
 
-        if highest_iou >= threshold:
-            ordered_mapping.append({
-                "t_cat": t_labels[highest_iou_ind],
-                "t_box": t_boxes[highest_iou_ind],
-                "p_cat": p_labels[i],
-                "p_box": p_boxes[i],
-                "iou_score": highest_iou,
-            })
+        if highest_iou > threshold:
+            pred_truth_index_map[i] = highest_truth_index
+            pred_index_iou_map[i] = highest_iou
 
-            t_labels.pop(highest_iou_ind)
-            t_boxes.pop(highest_iou_ind)
-
+    pred_truth_map = list()
+    for i in range(len(pred_objs)):
+        if i in pred_truth_index_map.keys():
+            pred_truth_map.append(
+                {
+                    "iou_score": pred_index_iou_map[i],
+                    "pred_obj": pred_objs[i],
+                    "truth_obj": truth_objs[pred_truth_index_map[i]],
+                }
+            )
         else:
-            ordered_mapping.append({
-                "t_cat": "background",
-                "t_box": None,
-                "p_cat": p_labels[i],
-                "p_box": p_boxes[i],
-                "iou_score": None,
-            })
+            pred_truth_map.append(
+                {
+                    "iou_score": None,
+                    "pred_obj": pred_objs[i],
+                    "truth_obj": None,
+                }
+            )
 
-    if len(t_labels) != 0:
-        for i in range(len(t_labels)):
-            ordered_mapping.append({
-                "t_cat": t_labels[i],
-                "t_box": t_boxes[i],
-                "p_cat": "background",
-                "p_box": None,
-                "iou_score": None,
-            })
+    for j in range(len(truth_objs)):
+        if j not in pred_truth_index_map.values():
+            pred_truth_map.append(
+                {
+                    "iou_score": None,
+                    "pred_obj": None,
+                    "truth_obj": truth_objs[j],
+                }
+            )
 
-    return ordered_mapping
+    return pred_truth_map
 
 
 def get_box_iou(t_box_cord, p_box_cord):

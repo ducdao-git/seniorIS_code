@@ -42,6 +42,16 @@ nuim_mrcnn_label_mapping = {
     "732cce86872640628788ff1bb81006d4": "truck",
     "7b2ff083a64e4d53809ae5d9be563504": "car",
     "dfd26f200ade4d24b540184e16050022": "motorcycle",
-    "90d0f6f8e7c749149b1b6c3a029841a8": "vehicle.trailer",
+    "90d0f6f8e7c749149b1b6c3a029841a8": "truck",
     "6021b5187b924d64be64a702e5570edf": "truck",
+}
+
+label_int_map = {
+    "background": 0,
+    "bicycle": 1,
+    "bus": 2,
+    "car": 3,
+    "motorcycle": 4,
+    "person": 5,
+    "truck": 6,
 }
