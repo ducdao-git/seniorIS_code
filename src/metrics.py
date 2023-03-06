@@ -1,10 +1,132 @@
 from truth_class import TruthClass
 from predict_class import PredictClass
+import sklearn.metrics as skm
+
+
+def calc_f1(precision, recall):
+    numerator = 2 * precision * recall
+    denominator = precision + recall
+
+    if numerator == 0:
+        return 0
+
+    return numerator / denominator
+
+
+def calc_accuracy(confusion_matrix: list[list[int]]):
+    """
+    calculate the accuracy value for the given confusion matrix
+    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+    :return: <float> the accuracy value
+    """
+    true_negative, _ = confusion_matrix[0]
+    _, true_positive = confusion_matrix[1]
+
+    numerator = true_positive + true_negative
+    denominator = sum(confusion_matrix[0]) + sum(confusion_matrix[1])
+
+    if numerator == 0:
+        return 0
+
+    return numerator / denominator
+
+
+def calc_precision(confusion_matrix: list[list[int]]):
+    """
+    calculate the precision value for the given confusion matrix
+    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+    :return: <float> the precision value
+    """
+    _, false_positive = confusion_matrix[0]
+    _, true_positive = confusion_matrix[1]
+
+    numerator = true_positive
+    denominator = true_positive + false_positive
+
+    if numerator == 0:
+        return 0
+
+    return numerator / denominator
+
+
+def calc_recall(confusion_matrix: list[list[int]]):
+    """
+    calculate the recall value for the given confusion matrix
+    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+    :return: <float> the recall value
+    """
+    false_negative, true_positive = confusion_matrix[1]
+
+    numerator = true_positive
+    denominator = true_positive + false_negative
+
+    if numerator == 0:
+        return 0
+
+    return numerator / denominator
+
+
+def multilabel_th_cmatrix(pred_truth_map, thresholds):
+    """
+    generate confusion matrix for multilabel result truth_pred at each
+    threshold
+
+    :param pred_truth_map:
+    :param thresholds:
+    :return:
+    """
+    result_by_threshold = dict()
+    for threshold in thresholds:
+        result_by_threshold[threshold] = dict()
+        truth_labels = list()
+        pred_labels = list()
+
+        for item in pred_truth_map:
+            if item["iou_score"] and item["iou_score"] >= threshold:
+                truth_labels.append(item["truth_obj"].t_label)
+                pred_labels.append(item["pred_obj"].p_label)
+
+            elif item["iou_score"]:
+                # when the model predict a label for object at this location
+                # but the iou_score is low, should we just add the
+                # truth_label to the list and have the pred_label to be
+                # background. Or we should add another case where
+                # truth_label is background and pred_label be added to the
+                # pred_labels list. If we do both, then for every truth_pred
+                # pair, that have low iou score, will be considered as 2
+                # errors in our evaluation
+
+                truth_labels.append(item["truth_obj"].t_label)
+                pred_labels.append("background")
+
+                # truth_labels.append("background")
+                # pred_labels.append(item["pred_obj"].p_label)
+
+            elif item["truth_obj"]:
+                truth_labels.append(item["truth_obj"].t_label)
+                pred_labels.append("background")
+
+            else:
+                truth_labels.append("background")
+                pred_labels.append(item["pred_obj"].p_label)
+
+        # print(f"\n{truth_labels}\n{pred_labels}")
+
+        unique_labels = list(set(truth_labels).union(set(pred_labels)))
+        multi_cmatrix = skm.multilabel_confusion_matrix(
+            y_true=truth_labels,
+            y_pred=pred_labels,
+            labels=unique_labels,
+        ).astype(int)
+
+        for i in range(len(unique_labels)):
+            result_by_threshold[threshold][unique_labels[i]] = multi_cmatrix[i]
+
+    return result_by_threshold
 
 
 def preds_choose_truths_map(
-        truth_objs: list[TruthClass], pred_objs: list[PredictClass],
-        threshold=0.5
+    truth_objs: list[TruthClass], pred_objs: list[PredictClass], threshold=0.5
 ):
     """
     This greedy method take a list of predictions assuming the predictions
@@ -120,32 +242,3 @@ def get_box_iou(t_box_cord, p_box_cord):
     t_box_area = (t_box["x2"] - t_box["x1"]) * (t_box["y2"] - t_box["y1"])
 
     return intersection_area / (p_box_area + t_box_area - intersection_area)
-
-# assert get_box_iou([0, 0, 2, 2], [0, 0, 2, 2]) == 1
-# assert get_box_iou([1, 0, 2, 2], [0, 0, 2, 2]) == 0.5
-# assert get_box_iou([1, 1, 2, 2], [0, 0, 2, 2]) == 0.25
-#
-# assert get_box_iou([0, 1, 2, 2], [0, 0, 1, 1]) == 0
-# assert get_box_iou([2, 2, 3, 3], [0, 0, 1, 1]) == 0
-#
-# # the get_box_iou is not perfect, let say we have 2 truth boxes, one with
-# # (0, 0, 4, 4) and one with (0, 2, 4, 4). If the predict box is
-# # (0, 1, 4, 4), then iou will higher for pair (0, 0, 4, 4) compare to
-# # (0, 2, 4, 4). The math make sense, but in reality, is this the result that
-# # we want?
-#
-# print(get_box_iou([0, 0, 4, 4], [0, 1, 4, 4]))
-# print(get_box_iou([0, 2, 4, 4], [0, 1, 4, 4]))
-
-# import json
-# with open("../output/metrics_out.json", "w") as outfile:
-#     json.dump(
-#         preds_choose_truths_map(
-#             t_labels=["car", "person"],
-#             t_boxes=[[0, 0, 1, 1], [1, 1, 2, 2]],
-#             p_labels=["bike", "person", "car"],
-#             p_boxes=[[2.1, 2.1, 3, 3], [1, 1, 1.9, 1.9], [0, 0, 0.9, 0.9]],
-#             threshold=0.5,
-#         ),
-#         outfile
-#     )

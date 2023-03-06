@@ -3,7 +3,7 @@ import numpy as np
 
 class TruthClass:
     def __init__(self, label, bbox, mask):
-        self._label = np.array(label)
+        self._label = str(label)
         self._bbox = np.array(bbox)
         self._mask = np.array(mask)
         self.is_print_value = True
@@ -29,7 +29,7 @@ class TruthClass:
             mask_value += f" {self.t_mask}"
 
         return (
-            f"t_label: {self.t_label.size}{label_value}\n"
+            f"t_label: {label_value}\n"
             f"t_bbox: {self.t_bbox.size}{bbox_value}\n"
             f"t_mask: {self.t_mask.size}{mask_value}\n"
         )

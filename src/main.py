@@ -1,13 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+import json
 import torch
 from nuimages import NuImages
 from torchvision.io import read_image
 from torchvision.transforms import functional as torch_func
 from torchvision.utils import draw_bounding_boxes
 
-
-from metrics import preds_choose_truths_map, get_box_iou
+import metrics as m
 from mrcnn_utils import get_mask_rcnn, get_mrcnn_outputs
 from nuimg_sample import NuImgSample
 
@@ -18,6 +19,10 @@ from pprint import pprint
 
 # torch.set_printoptions(profile="full")
 # torch.set_printoptions(linewidth=10000)
+
+CONFIDENT_THRESHOLD = 0.5
+MAP_THRESHOLD = 0.5  # y_pred and y_truth must have higher IOU to be mapped tgt
+IOU_THRESHOLDS = [t / 100 for t in range(50, 95, 5)]
 
 nuImages_dataroot = "../input/nuImage"
 nuim_obj = NuImages(
@@ -60,7 +65,7 @@ def get_truth_objs(img_index):
     return sample_img_int, truth_objs
 
 
-def get_mrcnn_predict_objs(sample_img_int, thresh_hold=0.7):
+def get_mrcnn_predict_objs(sample_img_int, thresh_hold=CONFIDENT_THRESHOLD):
     # ----------------- generate predicted ----------------- #
     mrcnn_model, mrcnn_weights = get_mask_rcnn(computation_device)
     transform_sample_img_int = mrcnn_weights.transforms()(sample_img_int)
@@ -86,48 +91,85 @@ def get_mrcnn_predict_objs(sample_img_int, thresh_hold=0.7):
     return transform_sample_img_int, pred_objs
 
 
-def main(_index):
-    sample_img_int, truth_objs = get_truth_objs(_index)
-    sample_img_int, pred_objs = get_mrcnn_predict_objs(sample_img_int, 0.7)
+def update_batch_th_cmatrix(batch_th_cmatrix, th_cmatrix):
+    for th in th_cmatrix.keys():
+        target_th = batch_th_cmatrix[th]
+        source_th = th_cmatrix[th]
 
-    # ----------------- evaluation based on bboxes ----------------- #
-    pred_truth_map = preds_choose_truths_map(
-        truth_objs=truth_objs,
-        pred_objs=pred_objs,
-        threshold=0.9,
-    )
+        for label in source_th.keys():
+            if label in target_th:
+                target_th[label] += source_th[label]
+            else:
+                target_th[label] = source_th[label]
 
-    pprint(pred_truth_map)
-    # print(pred_truth_map[0]["iou_score"])
-    # print(pred_truth_map[0]["pred_obj"])
-    # print(pred_truth_map[0]["truth_obj"])
-
-    # # ----------------- show image with bbox ----------------- #
-    # t_bboxes = torch.tensor(np.array(t_bboxes), dtype=torch.float)
-    # if len(t_bboxes) > 0:
-    #     img = draw_bounding_boxes(
-    #         image=sample_img_int,
-    #         boxes=t_bboxes,
-    #         labels=t_labels,
-    #         colors="red",
-    #         width=1,
-    #     )
-    # else:
-    #     img = sample_img_int
-    #
-    # p_bboxes = torch.tensor(np.array(p_bboxes), dtype=torch.float)
-    # if len(p_bboxes) > 0:
-    #     img = draw_bounding_boxes(
-    #         image=img,
-    #         boxes=p_bboxes,
-    #         labels=p_labels,
-    #         colors="blue",
-    #         width=1,
-    #     )
-    #
-    # plt.imshow(torch_func.to_pil_image(img))
-    # plt.show()
+    return batch_th_cmatrix
 
 
-# for i in range(20):
-main(0)
+def get_batch_th_eval(batch_th_cmatrix):
+    batch_th_eval = dict()
+    for th in batch_th_cmatrix.keys():
+        batch_th_eval[th] = dict()
+
+    for th in batch_th_cmatrix:
+        for label in batch_th_cmatrix[th]:
+            metric_dict = dict()
+            confusion_matrix = batch_th_cmatrix[th][label]
+
+            metric_dict["accuracy"] = m.calc_accuracy(confusion_matrix)
+            metric_dict["precision"] = m.calc_precision(confusion_matrix)
+            metric_dict["recall"] = m.calc_recall(confusion_matrix)
+
+            metric_dict["f1"] = m.calc_f1(
+                precision=metric_dict["precision"],
+                recall=metric_dict["recall"],
+            )
+
+            batch_th_eval[th][label] = metric_dict
+
+    return batch_th_eval
+
+
+def main():
+    start_time = time.time()
+    # -------------------------------------------------------------------------
+    # create dict to store confusion matrix and evaluation metrics
+    batch_th_cmatrix = dict()  # batch, threshold, multilabel confusion matrix
+    for t in IOU_THRESHOLDS:
+        batch_th_cmatrix[t] = dict()
+
+    # -------------------------------------------------------------------------
+    # generate confusion matrix for each label at different threshold
+    for img_index in range(0, 50):
+        print(f"\n{'-' * 9} img_index: {img_index} {'-' * 9}")
+
+        sample_img_int, truth_objs = get_truth_objs(img_index)
+        sample_img_int, pred_objs = get_mrcnn_predict_objs(sample_img_int)
+
+        pred_truth_map = m.preds_choose_truths_map(
+            truth_objs=truth_objs,
+            pred_objs=pred_objs,
+            threshold=MAP_THRESHOLD,
+        )
+        # pprint(pred_truth_map)
+
+        update_batch_th_cmatrix(
+            batch_th_cmatrix=batch_th_cmatrix,
+            th_cmatrix=m.multilabel_th_cmatrix(
+                pred_truth_map=pred_truth_map,
+                thresholds=IOU_THRESHOLDS,
+            ),
+        )
+
+    # -------------------------------------------------------------------------
+    # print out or dump to json with the variable name
+    print(f"\n{'-' * 9} confusion matrix, multilabel, multi-threshold")
+    pprint(batch_th_cmatrix)
+
+    batch_th_eval = get_batch_th_eval(batch_th_cmatrix)
+    with open("../output/batch_th_eval.json", "w") as outfile:
+        json.dump(batch_th_eval, outfile)
+
+    print(f"runtime: {time.time() - start_time}")
+
+
+main()

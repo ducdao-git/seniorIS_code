@@ -3,7 +3,7 @@ import numpy as np
 
 class PredictClass:
     def __init__(self, label, score, bbox, mask):
-        self._label = np.array(label)
+        self._label = str(label)
         self._score = np.array(score)
         self._bbox = np.array(bbox)
         self._mask = np.array(mask)
@@ -35,7 +35,7 @@ class PredictClass:
             mask_value += f" {self.p_mask}"
 
         return (
-            f"p_label: {self.p_label.size}{label_value}\n"
+            f"p_label: {label_value}\n"
             f"p_score: {self.p_score.size}{score_value}\n"
             f"p_bbox: {self.p_bbox.size}{bbox_value}\n"
             f"p_mask: {self.p_mask.size}{mask_value}\n"

@@ -48,17 +48,26 @@ def get_mrcnn_outputs(
     masks = masks[: len(scores)]
 
     if nuim_mrcnn_label_only:
-        to_remove_item_index = list()
+        remove_index = set()
 
         for i in range(len(labels)):
             if labels[i] not in nuim_mrcnn_label_mapping.values():
-                to_remove_item_index.append(i)
+                remove_index.add(i)
 
-        for index in to_remove_item_index:
-            scores.pop(index)
-            labels.pop(index)
-            boxes.pop(index)
-            masks.pop(index)
+        return_scores = list()
+        return_labels = list()
+        return_boxes = list()
+        return_masks = list()
+        for i in range(len(labels)):
+            if i in remove_index:
+                continue
+
+            return_scores.append(scores[i])
+            return_labels.append(labels[i])
+            return_boxes.append(boxes[i])
+            return_masks.append(masks[i])
+
+        return return_scores, return_labels, return_boxes, return_masks
 
     return scores, labels, boxes, masks
 
