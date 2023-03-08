@@ -1,5 +1,3 @@
-from truth_class import TruthClass
-from predict_class import PredictClass
 import sklearn.metrics as skm
 
 
@@ -13,7 +11,7 @@ def calc_f1(precision, recall):
     return numerator / denominator
 
 
-def calc_accuracy(confusion_matrix: list[list[int]]):
+def calc_accuracy(confusion_matrix):  # list[list[int]]
     """
     calculate the accuracy value for the given confusion matrix
     :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
@@ -31,7 +29,7 @@ def calc_accuracy(confusion_matrix: list[list[int]]):
     return numerator / denominator
 
 
-def calc_precision(confusion_matrix: list[list[int]]):
+def calc_precision(confusion_matrix):  # list[list[int]]
     """
     calculate the precision value for the given confusion matrix
     :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
@@ -49,7 +47,7 @@ def calc_precision(confusion_matrix: list[list[int]]):
     return numerator / denominator
 
 
-def calc_recall(confusion_matrix: list[list[int]]):
+def calc_recall(confusion_matrix):
     """
     calculate the recall value for the given confusion matrix
     :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
@@ -125,9 +123,7 @@ def multilabel_th_cmatrix(pred_truth_map, thresholds):
     return result_by_threshold
 
 
-def preds_choose_truths_map(
-    truth_objs: list[TruthClass], pred_objs: list[PredictClass], threshold=0.5
-):
+def preds_choose_truths_map(truth_objs, pred_objs, threshold=0.5):
     """
     This greedy method take a list of predictions assuming the predictions
     are sort from high confident to low confident in the list. For each

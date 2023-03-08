@@ -1,19 +1,21 @@
 import torch
+from torchvision.io import read_image
 from torchvision.models import detection as torch_model
 
 from label_mapping import nuim_mrcnn_label_mapping
+from predict_class import PredictClass
+
+MRCNN_WEIGHTS = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
+MRCNN_MODEL = torch_model.maskrcnn_resnet50_fpn(
+    weights=MRCNN_WEIGHTS,
+    progress=True,
+    num_classes=91,
+)
 
 
 def get_mask_rcnn(device):
-    mrcnn_weights = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
-    # print(f"mrcnn labels: {mrcnn_weights.meta['categories']} \n\n")
-
-    # initialize the model
-    mrcnn_model = torch_model.maskrcnn_resnet50_fpn(
-        weights=mrcnn_weights,
-        progress=True,
-        num_classes=91,
-    )
+    mrcnn_weights = MRCNN_WEIGHTS
+    mrcnn_model = MRCNN_MODEL
 
     # load the model on to the computation device and set to eval mode
     mrcnn_model.to(device).eval()
@@ -72,29 +74,31 @@ def get_mrcnn_outputs(
     return scores, labels, boxes, masks
 
 
-# def main():
-#     import matplotlib.pyplot as plt
-#     from torchvision.io import read_image
-#     from torchvision.transforms import functional as torch_func
-#
-#     # set the computation device
-#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#     image = read_image(input_img_path)
-#
-#     mrcnn_model, mrcnn_weights = get_mask_rcnn(device)
-#     transform_img = mrcnn_weights.transforms()(image)
-#
-#     scores, labels, boxes, masks = get_mrcnn_outputs(
-#         mrcnn_model, mrcnn_weights, transform_img
-#     )
-#
-#     print("boxes:  ", type(boxes), len(boxes), boxes, "\n")
-#     print("labels: ", type(labels), len(labels), labels, "\n")
-#     print("scores: ", type(scores), len(scores), scores, "\n")
-#     print("masks:  ", type(masks), len(masks), "\n")
-#
-#     plt.imshow(torch_func.to_pil_image(image))
-#     plt.show()
-#
-#
-# main()
+def get_mrcnn_predict_objs(
+    computation_device, sample_img_path, thresh_hold=0.5
+):
+    # ----------------- generate predicted ----------------- #
+    mrcnn_model, mrcnn_weights = get_mask_rcnn(computation_device)
+
+    sample_img_int = read_image(sample_img_path)
+    transform_sample_img_int = mrcnn_weights.transforms()(sample_img_int)
+
+    p_scores, p_labels, p_bboxes, p_masks = get_mrcnn_outputs(
+        mrcnn_model=mrcnn_model,
+        mrcnn_weights=mrcnn_weights,
+        image=transform_sample_img_int.to(computation_device),
+        thresh_hold=thresh_hold,
+        nuim_mrcnn_label_only=True,
+    )
+
+    pred_objs = list()
+    for i in range(len(p_labels)):
+        pred_obj = PredictClass(
+            label=p_labels[i],
+            score=p_scores[i],
+            bbox=p_bboxes[i],
+            mask=p_masks[i],
+        )
+        pred_objs.append(pred_obj)
+
+    return pred_objs

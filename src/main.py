@@ -4,14 +4,13 @@ from pprint import pprint
 
 import torch
 from nuimages import NuImages
-from torchvision.io import read_image
 
 import metrics as m
 from label_mapping import label_int_map
-from mrcnn_utils import get_mask_rcnn, get_mrcnn_outputs
+from mrcnn_utils import get_mrcnn_predict_objs
 from nuimg_sample import NuImgSample
-from predict_class import PredictClass
 from truth_class import TruthClass
+from yolo_utils import get_yolov5_predict_objs
 
 # torch.set_printoptions(profile="full")
 # torch.set_printoptions(linewidth=10000)
@@ -29,9 +28,11 @@ nuim_obj = NuImages(
     verbose=False,
     lazy=True,
 )
+
 computation_device = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
+print(computation_device)
 
 
 def get_truth_objs(img_index):
@@ -63,35 +64,15 @@ def get_truth_objs(img_index):
     return sample_img_path, truth_objs
 
 
-def get_mrcnn_predict_objs(sample_img_int, thresh_hold=CONFIDENT_THRESHOLD):
-    # ----------------- generate predicted ----------------- #
-    mrcnn_model, mrcnn_weights = get_mask_rcnn(computation_device)
-    transform_sample_img_int = mrcnn_weights.transforms()(sample_img_int)
+def update_batch_th_cmatrix(batch_th_cmatrix, model_name, th_cmatrix):
+    if model_name not in batch_th_cmatrix.keys():
+        batch_th_cmatrix[model_name] = dict()
 
-    p_scores, p_labels, p_bboxes, p_masks = get_mrcnn_outputs(
-        mrcnn_model=mrcnn_model,
-        mrcnn_weights=mrcnn_weights,
-        image=transform_sample_img_int,
-        thresh_hold=thresh_hold,
-        nuim_mrcnn_label_only=True,
-    )
+        for t in IOU_THRESHOLDS:
+            batch_th_cmatrix[model_name][t] = dict()
 
-    pred_objs = list()
-    for i in range(len(p_labels)):
-        pred_obj = PredictClass(
-            label=p_labels[i],
-            score=p_scores[i],
-            bbox=p_bboxes[i],
-            mask=p_masks[i],
-        )
-        pred_objs.append(pred_obj)
-
-    return transform_sample_img_int, pred_objs
-
-
-def update_batch_th_cmatrix(batch_th_cmatrix, th_cmatrix):
     for th in th_cmatrix.keys():
-        target_th = batch_th_cmatrix[th]
+        target_th = batch_th_cmatrix[model_name][th]
         source_th = th_cmatrix[th]
 
         for label in source_th.keys():
@@ -103,68 +84,60 @@ def update_batch_th_cmatrix(batch_th_cmatrix, th_cmatrix):
     return batch_th_cmatrix
 
 
-def get_batch_th_eval(batch_th_cmatrix):
-    batch_th_eval = dict()
-    for label in SUPPORTED_LABELS.keys():
-        batch_th_eval[label] = dict()
+def get_batch_label_eval(batch_th_cmatrix):
+    batch_label_eval = dict()
 
     # -------------------------------------------------------------------------
     # calculate accuracy, precision, recall at each threshold for each label
-    for th in batch_th_cmatrix:
-        for label in batch_th_cmatrix[th]:
-            metric_dict = dict()
-            confusion_matrix = batch_th_cmatrix[th][label]
+    for model in batch_th_cmatrix:
+        for th in batch_th_cmatrix[model]:
+            for label in batch_th_cmatrix[model][th]:
+                metric_dict = dict()
+                confusion_matrix = batch_th_cmatrix[model][th][label]
 
-            metric_dict["accuracy"] = m.calc_accuracy(confusion_matrix)
-            metric_dict["precision"] = m.calc_precision(confusion_matrix)
-            metric_dict["recall"] = m.calc_recall(confusion_matrix)
+                metric_dict["accuracy"] = m.calc_accuracy(confusion_matrix)
+                metric_dict["precision"] = m.calc_precision(confusion_matrix)
+                metric_dict["recall"] = m.calc_recall(confusion_matrix)
 
-            metric_dict["f1"] = m.calc_f1(
-                precision=metric_dict["precision"],
-                recall=metric_dict["recall"],
-            )
+                metric_dict["f1"] = m.calc_f1(
+                    precision=metric_dict["precision"],
+                    recall=metric_dict["recall"],
+                )
 
-            batch_th_eval[label][th] = metric_dict
+                if model not in batch_label_eval:
+                    batch_label_eval[model] = dict()
+                    for _l in SUPPORTED_LABELS.keys():
+                        batch_label_eval[model][_l] = dict()
+
+                batch_label_eval[model][label][th] = metric_dict
 
     # -------------------------------------------------------------------------
     # calculate average precision (AP) across all threshold for each label
-    for label in batch_th_eval:
-        precisions = list()
-        recalls = list()
+    for model in batch_label_eval:
+        target_loc = batch_label_eval[model]
 
-        label_dict = batch_th_eval[label]
-        for th in label_dict:
-            precisions.append(label_dict[th]["precision"])
-            recalls.append(label_dict[th]["recall"])
+        for label in target_loc:
+            precisions = list()
+            recalls = list()
 
-        precisions.append(1)
-        recalls.append(0)
+            label_dict = target_loc[label]
+            for th in label_dict:
+                precisions.append(label_dict[th]["precision"])
+                recalls.append(label_dict[th]["recall"])
 
-        label_dict["AP"] = 0
-        for k in range(len(precisions) - 1):
-            label_dict["AP"] += (recalls[k] - recalls[k + 1]) * precisions[k]
+            precisions.append(1)
+            recalls.append(0)
 
-    return batch_th_eval
+            label_dict["AP"] = 0
+            for k in range(len(precisions) - 1):
+                k_eval = (recalls[k] - recalls[k + 1]) * precisions[k]
+                label_dict["AP"] += k_eval
 
+        target_loc["mAP"] = sum(
+            [target_loc[label]["AP"] for label in target_loc]
+        ) / len(SUPPORTED_LABELS)
 
-# def get_yolov5_predict_objs():
-#     from PIL import Image
-#
-#     sample_img_path, truth_objs = get_truth_objs(0)
-#
-#     model = torch.hub.load('ultralytics/yolov5', 'yolov5n-seg.pt', pretrained=True)
-#     model.to(computation_device).eval()
-#
-#     with torch.no_grad():
-#         # pass of the image to the model without gradient calculation step
-#         outputs = model([Image.open(sample_img_path)])
-#
-#     # outputs = outputs.segmentation[0]
-#
-#     pprint(outputs.pandas().xyxy[0])
-#
-#
-# get_yolov5_predict_objs()
+    return batch_label_eval
 
 
 def main():
@@ -172,8 +145,6 @@ def main():
     # -------------------------------------------------------------------------
     # create dict to store confusion matrix and evaluation metrics
     batch_th_cmatrix = dict()  # batch, threshold, multilabel confusion matrix
-    for t in IOU_THRESHOLDS:
-        batch_th_cmatrix[t] = dict()
 
     # -------------------------------------------------------------------------
     # generate confusion matrix for each label at different threshold
@@ -181,20 +152,40 @@ def main():
         print(f"\n{'-' * 9} img_index: {img_index} {'-' * 9}")
         sample_img_path, truth_objs = get_truth_objs(img_index)
 
-        sample_img_int = read_image(sample_img_path)
-        sample_img_int, pred_objs = get_mrcnn_predict_objs(sample_img_int)
-
-        pred_truth_map = m.preds_choose_truths_map(
+        # confusion matrix for mask r-cnn
+        mrcnn_pred_objs = get_mrcnn_predict_objs(
+            computation_device=computation_device,
+            sample_img_path=sample_img_path,
+            thresh_hold=CONFIDENT_THRESHOLD,
+        )
+        mrcnn_pred_truth_map = m.preds_choose_truths_map(
             truth_objs=truth_objs,
-            pred_objs=pred_objs,
+            pred_objs=mrcnn_pred_objs,
             threshold=MAP_THRESHOLD,
         )
-        # pprint(pred_truth_map)
-
         update_batch_th_cmatrix(
             batch_th_cmatrix=batch_th_cmatrix,
+            model_name="mrcnn",
             th_cmatrix=m.multilabel_th_cmatrix(
-                pred_truth_map=pred_truth_map,
+                pred_truth_map=mrcnn_pred_truth_map,
+                thresholds=IOU_THRESHOLDS,
+            ),
+        )
+
+        # confusion matrix for YOLOv5
+        yolo_pred_objs = get_yolov5_predict_objs(
+            computation_device, sample_img_path
+        )
+        yolo_pred_truth_map = m.preds_choose_truths_map(
+            truth_objs=truth_objs,
+            pred_objs=yolo_pred_objs,
+            threshold=MAP_THRESHOLD,
+        )
+        update_batch_th_cmatrix(
+            batch_th_cmatrix=batch_th_cmatrix,
+            model_name="yolov5",
+            th_cmatrix=m.multilabel_th_cmatrix(
+                pred_truth_map=yolo_pred_truth_map,
                 thresholds=IOU_THRESHOLDS,
             ),
         )
@@ -204,12 +195,9 @@ def main():
     print(f"\n{'-' * 9} confusion matrix, multilabel, multi-threshold")
     pprint(batch_th_cmatrix)
 
-    batch_th_eval = get_batch_th_eval(batch_th_cmatrix)
-    batch_th_eval["mAP"] = sum(
-        [batch_th_eval[label]["AP"] for label in batch_th_eval]
-    ) / len(SUPPORTED_LABELS)
-    with open("../output/batch_th_eval.json", "w") as outfile:
-        json.dump(batch_th_eval, outfile)
+    batch_label_eval = get_batch_label_eval(batch_th_cmatrix)
+    with open("../output/batch_label_eval.json", "w") as outfile:
+        json.dump(batch_label_eval, outfile)
 
     print(f"runtime: {time.time() - start_time}")
 
