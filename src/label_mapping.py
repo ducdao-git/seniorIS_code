@@ -26,7 +26,7 @@
 #   "6021b5187b924d64be64a702e5570edf": "vehicle.truck",
 # }
 
-nuim_mrcnn_label_mapping = {
+nuim_supported_label_mapping = {
     "1fa93b757fc74fb197cdd60001ad8abf": "person",
     "b1c6de4c57f14a5383d9f963fbdcb5cb": "person",
     "909f1237d34a49d6bdd27c2fe4581d79": "person",
@@ -46,7 +46,7 @@ nuim_mrcnn_label_mapping = {
     "6021b5187b924d64be64a702e5570edf": "truck",
 }
 
-label_int_map = {
+supported_label_map = {
     "background": 0,
     "bicycle": 1,
     "bus": 2,

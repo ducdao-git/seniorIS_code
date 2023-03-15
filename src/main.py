@@ -6,20 +6,16 @@ import torch
 from nuimages import NuImages
 
 import metrics as m
-from label_mapping import label_int_map
+from label_mapping import supported_label_map
 from mrcnn_utils import get_mrcnn_predict_objs
 from nuimg_sample import NuImgSample
 from truth_class import TruthClass
 from yolo_utils import get_yolov5_predict_objs
 
-# torch.set_printoptions(profile="full")
-# torch.set_printoptions(linewidth=10000)
-
 CONFIDENT_THRESHOLD = 0.5
 MAP_THRESHOLD = 0.5  # y_pred and y_truth must have higher IOU to be mapped tgt
 IOU_THRESHOLDS = [t / 100 for t in range(50, 95, 5)]
 IMG_INDEX = range(0, 50)
-SUPPORTED_LABELS = label_int_map
 
 nuImages_dataroot = "../input/nuImage"
 nuim_obj = NuImages(
@@ -106,7 +102,7 @@ def get_batch_label_eval(batch_th_cmatrix):
 
                 if model not in batch_label_eval:
                     batch_label_eval[model] = dict()
-                    for _l in SUPPORTED_LABELS.keys():
+                    for _l in supported_label_map.keys():
                         batch_label_eval[model][_l] = dict()
 
                 batch_label_eval[model][label][th] = metric_dict
@@ -135,7 +131,7 @@ def get_batch_label_eval(batch_th_cmatrix):
 
         target_loc["mAP"] = sum(
             [target_loc[label]["AP"] for label in target_loc]
-        ) / len(SUPPORTED_LABELS)
+        ) / len(supported_label_map)
 
     return batch_label_eval
 

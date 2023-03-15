@@ -2,7 +2,7 @@ import torch
 from torchvision.io import read_image
 from torchvision.models import detection as torch_model
 
-from label_mapping import nuim_mrcnn_label_mapping
+from label_mapping import nuim_supported_label_mapping
 from predict_class import PredictClass
 
 MRCNN_WEIGHTS = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
@@ -53,7 +53,7 @@ def get_mrcnn_outputs(
         remove_index = set()
 
         for i in range(len(labels)):
-            if labels[i] not in nuim_mrcnn_label_mapping.values():
+            if labels[i] not in nuim_supported_label_mapping.values():
                 remove_index.add(i)
 
         return_scores = list()

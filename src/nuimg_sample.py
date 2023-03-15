@@ -2,7 +2,7 @@ import os.path as osp
 
 from nuimages import NuImages
 
-from label_mapping import nuim_mrcnn_label_mapping
+from label_mapping import nuim_supported_label_mapping
 
 
 class NuImgSample:
@@ -32,7 +32,7 @@ class NuImgSample:
             supported_objs_ann = list()
 
             for obj in self.objs_ann:
-                if obj["category_token"] in nuim_mrcnn_label_mapping.keys():
+                if obj["category_token"] in nuim_supported_label_mapping.keys():
                     supported_objs_ann.append(obj)
 
             self.objs_ann = supported_objs_ann
@@ -84,6 +84,6 @@ class NuImgSample:
         objs_cat = list()
 
         for cat_token in objs_cat_token:
-            objs_cat.append(nuim_mrcnn_label_mapping[cat_token])
+            objs_cat.append(nuim_supported_label_mapping[cat_token])
 
         return objs_cat

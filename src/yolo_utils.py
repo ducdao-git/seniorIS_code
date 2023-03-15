@@ -1,6 +1,6 @@
 import torch
 
-from label_mapping import label_int_map
+from label_mapping import supported_label_map
 from predict_class import PredictClass
 
 YOLO_MODEL = torch.hub.load(
@@ -11,12 +11,12 @@ YOLO_MODEL = torch.hub.load(
 )
 
 
+# model = torch.hub.load(
+#     'ultralytics/yolov5', 'custom', 'yolov5m-seg.pt', force_reload=True
+# )
+
 def get_yolov5_predict_objs(computation_device, sample_img_path):
     model = YOLO_MODEL
-
-    # model = torch.hub.load(
-    #     'ultralytics/yolov5', 'custom', 'yolov5m-seg.pt', force_reload=True
-    # )
     model.to(computation_device).eval()
 
     with torch.no_grad():
@@ -28,7 +28,7 @@ def get_yolov5_predict_objs(computation_device, sample_img_path):
 
     pred_objs = list()
     for _, row in dataframe.iterrows():
-        if row["name"] in label_int_map:
+        if row["name"] in supported_label_map:
             pred_objs.append(
                 PredictClass(
                     label=row["name"],

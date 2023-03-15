@@ -97,8 +97,8 @@ def multilabel_th_cmatrix(pred_truth_map, thresholds):
                 truth_labels.append(item["truth_obj"].t_label)
                 pred_labels.append("background")
 
-                # truth_labels.append("background")
-                # pred_labels.append(item["pred_obj"].p_label)
+                truth_labels.append("background")
+                pred_labels.append(item["pred_obj"].p_label)
 
             elif item["truth_obj"]:
                 truth_labels.append(item["truth_obj"].t_label)
@@ -238,3 +238,10 @@ def get_box_iou(t_box_cord, p_box_cord):
     t_box_area = (t_box["x2"] - t_box["x1"]) * (t_box["y2"] - t_box["y1"])
 
     return intersection_area / (p_box_area + t_box_area - intersection_area)
+
+
+print(skm.multilabel_confusion_matrix(
+    ["car", "car", "car", "human"],
+    ["car", "none", "none", "human"],
+    labels=["car", "human", "none"]
+))
