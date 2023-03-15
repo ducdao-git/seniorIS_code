@@ -38,7 +38,6 @@ nuim_supported_label_mapping = {
     "003edbfb9ca849ee8a7496e9af3025d4": "bus",
     "fedb11688db84088883945752e480c2c": "bus",
     "fd69059b62a3469fbaef25340c0eab7f": "car",
-    # "5b3cd6f2bca64b83aa3d0008df87d0e4": "truck",
     "732cce86872640628788ff1bb81006d4": "truck",
     "7b2ff083a64e4d53809ae5d9be563504": "car",
     "dfd26f200ade4d24b540184e16050022": "motorcycle",
@@ -46,12 +45,5 @@ nuim_supported_label_mapping = {
     "6021b5187b924d64be64a702e5570edf": "truck",
 }
 
-supported_label_map = {
-    "background": 0,
-    "bicycle": 1,
-    "bus": 2,
-    "car": 3,
-    "motorcycle": 4,
-    "person": 5,
-    "truck": 6,
-}
+supported_label = {"background", "bicycle", "bus", "car", "motorcycle",
+                   "person", "truck"}

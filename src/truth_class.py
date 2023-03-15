@@ -6,7 +6,7 @@ class TruthClass:
         self._label = str(label)
         self._bbox = np.array(bbox)
         self._mask = np.array(mask)
-        self.is_print_value = True
+        self.is_print_value = False
 
     @property
     def t_label(self):
@@ -21,15 +21,14 @@ class TruthClass:
         return self._mask
 
     def __str__(self):
-        label_value, bbox_value, mask_value = ["", "", ""]
+        bbox_value, mask_value = ["", ""]
 
         if self.is_print_value:
-            label_value += f" {self.t_label}"
             bbox_value += f" {self.t_bbox}"
             mask_value += f" {self.t_mask}"
 
         return (
-            f"t_label: {label_value}\n"
+            f"t_label: {self.t_label}\n"
             f"t_bbox: {self.t_bbox.size}{bbox_value}\n"
             f"t_mask: {self.t_mask.size}{mask_value}\n"
         )

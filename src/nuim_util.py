@@ -3,14 +3,15 @@ import os.path as osp
 from nuimages import NuImages
 
 from label_mapping import nuim_supported_label_mapping
+from truth_class import TruthClass
 
 
 class NuImgSample:
     def __init__(
-        self,
-        nuimg: NuImages,
-        sample_token: str,
-        nuim_mrcnn_label_only: bool = False,
+            self,
+            nuimg: NuImages,
+            sample_token: str,
+            nuim_mrcnn_label_only: bool = False,
     ):
         self.nuimg = nuimg
         self.sample_img = self.nuimg.get(
@@ -32,7 +33,9 @@ class NuImgSample:
             supported_objs_ann = list()
 
             for obj in self.objs_ann:
-                if obj["category_token"] in nuim_supported_label_mapping.keys():
+                supported_labels = nuim_supported_label_mapping.keys()
+
+                if obj["category_token"] in supported_labels:
                     supported_objs_ann.append(obj)
 
             self.objs_ann = supported_objs_ann
@@ -87,3 +90,31 @@ class NuImgSample:
             objs_cat.append(nuim_supported_label_mapping[cat_token])
 
         return objs_cat
+
+
+def get_truth_objs(nuim_obj, img_index):
+    # ------------ get the image ------------ #
+    sample_img = nuim_obj.sample[img_index]
+    sample_img = NuImgSample(
+        nuimg=nuim_obj,
+        sample_token=sample_img["token"],
+        nuim_mrcnn_label_only=True,
+    )
+
+    sample_img_path = sample_img.get_sample_img_path()
+
+    # ----------------- generate ground truth ----------------- #
+    t_bboxes = sample_img.get_objs_bbox()
+    t_labels = sample_img.get_objs_mrcnn_category()
+    t_masks = sample_img.get_objs_mask()
+
+    truth_objs = list()
+    for i in range(len(t_labels)):
+        truth_obj = TruthClass(
+            label=t_labels[i],
+            bbox=t_bboxes[i],
+            mask=t_masks[i],
+        )
+        truth_objs.append(truth_obj)
+
+    return sample_img_path, truth_objs

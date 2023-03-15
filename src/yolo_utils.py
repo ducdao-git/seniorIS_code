@@ -1,34 +1,18 @@
 import torch
 
-from label_mapping import supported_label_map
+from label_mapping import supported_label
 from predict_class import PredictClass
 
-YOLO_MODEL = torch.hub.load(
-    repo_or_dir="ultralytics/yolov5",
-    model="yolov5x",
-    pretrained=True,
-    verbose=False,
-)
 
-
-# model = torch.hub.load(
-#     'ultralytics/yolov5', 'custom', 'yolov5m-seg.pt', force_reload=True
-# )
-
-def get_yolov5_predict_objs(computation_device, sample_img_path):
-    model = YOLO_MODEL
-    model.to(computation_device).eval()
-
+def get_yolo_predict_objs(
+        yolo_model, img_path, supported_label_only: bool = False,
+):
     with torch.no_grad():
-        outputs = model(sample_img_path)
-
-    dataframe = outputs.pandas().xyxy[0]
-    # pprint(dataframe)
-    # print()
+        outputs = yolo_model(img_path).pandas().xyxy[0]
 
     pred_objs = list()
-    for _, row in dataframe.iterrows():
-        if row["name"] in supported_label_map:
+    for _, row in outputs.iterrows():
+        if not supported_label_only or row["name"] in supported_label:
             pred_objs.append(
                 PredictClass(
                     label=row["name"],
