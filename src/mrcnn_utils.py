@@ -5,8 +5,10 @@ from predict_class import PredictClass
 
 
 def get_mrcnn_outputs(
-        mrcnn_model, mrcnn_weights, img_tensor,
-        supported_label_only: bool = False,
+    mrcnn_model,
+    mrcnn_weights,
+    img_tensor,
+    supported_label_only: bool = False,
 ):
     with torch.no_grad():
         outputs = mrcnn_model([img_tensor])

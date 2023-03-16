@@ -27,23 +27,23 @@
 # }
 
 nuim_supported_label_mapping = {
-    "1fa93b757fc74fb197cdd60001ad8abf": "person",
-    "b1c6de4c57f14a5383d9f963fbdcb5cb": "person",
-    "909f1237d34a49d6bdd27c2fe4581d79": "person",
-    "403fede16c88426885dd73366f16c34a": "person",
-    "e3c7da112cd9475a9a10d45015424815": "person",
-    "6a5888777ca14867a8aee3fe539b56c4": "person",
-    "b2d7c6c701254928a9e4d6aac9446d79": "person",
-    "fc95c87b806f48f8a1faea2dcc2222a4": "bicycle",
+    # "fc95c87b806f48f8a1faea2dcc2222a4": "bicycle",
     "003edbfb9ca849ee8a7496e9af3025d4": "bus",
     "fedb11688db84088883945752e480c2c": "bus",
     "fd69059b62a3469fbaef25340c0eab7f": "car",
-    "732cce86872640628788ff1bb81006d4": "truck",
     "7b2ff083a64e4d53809ae5d9be563504": "car",
-    "dfd26f200ade4d24b540184e16050022": "motorcycle",
-    "90d0f6f8e7c749149b1b6c3a029841a8": "truck",
-    "6021b5187b924d64be64a702e5570edf": "truck",
+    # "dfd26f200ade4d24b540184e16050022": "motorcycle",
+    # "1fa93b757fc74fb197cdd60001ad8abf": "person",
+    # "b1c6de4c57f14a5383d9f963fbdcb5cb": "person",
+    # "909f1237d34a49d6bdd27c2fe4581d79": "person",
+    # "403fede16c88426885dd73366f16c34a": "person",
+    # "e3c7da112cd9475a9a10d45015424815": "person",
+    # "6a5888777ca14867a8aee3fe539b56c4": "person",
+    # "b2d7c6c701254928a9e4d6aac9446d79": "person",
+    # "732cce86872640628788ff1bb81006d4": "truck",
+    # "90d0f6f8e7c749149b1b6c3a029841a8": "truck",
+    # "6021b5187b924d64be64a702e5570edf": "truck",
 }
 
-supported_label = {"background", "bicycle", "bus", "car", "motorcycle",
-                   "person", "truck"}
+# supported_label = {"bicycle", "bus", "car", "motorcycle", "person", "truck"}
+supported_label = {"bus", "car"}

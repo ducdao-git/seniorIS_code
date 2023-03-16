@@ -8,10 +8,10 @@ from truth_class import TruthClass
 
 class NuImgSample:
     def __init__(
-            self,
-            nuimg: NuImages,
-            sample_token: str,
-            nuim_mrcnn_label_only: bool = False,
+        self,
+        nuimg: NuImages,
+        sample_token: str,
+        nuim_mrcnn_label_only: bool = False,
     ):
         self.nuimg = nuimg
         self.sample_img = self.nuimg.get(
