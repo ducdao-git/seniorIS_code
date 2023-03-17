@@ -10,9 +10,14 @@ def get_yolo_predict_objs(
     supported_label_only: bool = False,
 ):
     with torch.no_grad():
-        outputs = yolo_model(img_path).pandas().xyxy[0]
+        outputs = yolo_model(img_path)
 
+    if not outputs:
+        return list()
+
+    outputs = outputs.pandas().xyxy[0]
     pred_objs = list()
+
     for _, row in outputs.iterrows():
         if not supported_label_only or row["name"] in supported_label:
             pred_objs.append(

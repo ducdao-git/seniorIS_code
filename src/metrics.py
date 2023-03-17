@@ -1,6 +1,63 @@
 import sklearn.metrics as skm
 
 
+def calc_ap(precisions, recalls, interpolation_num=11):
+    assert len(precisions) == len(recalls)
+
+    # -------------- smooth out precision by the max right term --------------
+    max_right_precision = 0  # fact: precision >= 0
+
+    # smoothing the zigzag graph to a step graph
+    for i in range(len(precisions) - 1, -1, -1):
+        if precisions[i] <= max_right_precision:
+            precisions[i] = max_right_precision
+        else:
+            max_right_precision = precisions[i]
+
+    # ------------ mapping interpolation point to precision value ------------
+    interpolation_points = [
+        p / (interpolation_num - 1) for p in range(0, interpolation_num)
+    ]
+
+    # map interpolation point -> recalls index -> precisions index -> pr value
+    interpolated_precision = list()
+    last_mapped_ip_i = -1
+
+    for i in range(len(recalls)):
+        for j in range(last_mapped_ip_i + 1, len(interpolation_points)):
+            if interpolation_points[j] <= recalls[i]:
+                interpolated_precision.append(precisions[i])
+                last_mapped_ip_i += 1
+            else:
+                break
+
+    if last_mapped_ip_i + 1 < len(interpolation_points):
+        for i in range(last_mapped_ip_i + 1, len(interpolation_points)):
+            interpolated_precision.append(0)
+
+    # print(interpolated_precision)
+    # print(interpolation_points)
+
+    # ------------ calculate AP_N where N = interpolation_num ------------
+    return 1 / interpolation_num * sum(interpolated_precision)
+
+
+def calc_aprf1(confusion_matrix):
+    accuracy = calc_accuracy(confusion_matrix)
+
+    precision = calc_precision(confusion_matrix)
+    recall = calc_recall(confusion_matrix)
+
+    f1 = calc_f1(precision, recall)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+    }
+
+
 def calc_f1(precision, recall):
     numerator = 2 * precision * recall
     denominator = precision + recall
@@ -20,8 +77,8 @@ def calc_accuracy(confusion_matrix):  # list[list[int]]
     true_negative, false_positive = confusion_matrix[0]
     false_negative, true_positive = confusion_matrix[1]
 
-    if false_positive == false_negative == true_positive == 0:
-        return 1
+    # if false_positive == false_negative == true_positive == 0:
+    #     return 1
 
     numerator = true_positive + true_negative
     denominator = sum(confusion_matrix[0]) + sum(confusion_matrix[1])
@@ -41,8 +98,8 @@ def calc_precision(confusion_matrix):  # list[list[int]]
     _, false_positive = confusion_matrix[0]
     false_negative, true_positive = confusion_matrix[1]
 
-    if false_positive == false_negative == true_positive == 0:
-        return 1
+    # if false_positive == false_negative == true_positive == 0:
+    #     return 1
 
     numerator = true_positive
     denominator = true_positive + false_positive
@@ -62,8 +119,8 @@ def calc_recall(confusion_matrix):
     _, false_positive = confusion_matrix[0]
     false_negative, true_positive = confusion_matrix[1]
 
-    if false_positive == false_negative == true_positive == 0:
-        return 1
+    # if false_positive == false_negative == true_positive == 0:
+    #     return 1
 
     numerator = true_positive
     denominator = true_positive + false_negative
@@ -109,8 +166,15 @@ def multilabel_cmatrix(pred_truth_label_map, t_confidence, t_iou):
         labels=unique_labels,
     ).astype(int)
 
-    # print(len(preds_clabel), preds_clabel)
+    # print(len(ious), ious)
+    # print(len(confis), confis)
+
+    # print(len(truths), truths)
     # print(len(truths_clabel), truths_clabel)
+
+    # print(len(preds), preds)
+    # print(len(preds_clabel), preds_clabel)
+
     # print(unique_labels)
 
     class_cmatrix = dict()
