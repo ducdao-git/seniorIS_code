@@ -9,7 +9,7 @@ import main_utils as mut
 import nuim_util as nuu
 from label_mapping import supported_label
 
-NUIMG_INDEX = range(0, 1)
+NUIMG_INDEX = range(16444, 16445)
 CONFIDENCE_THRESHOLDS = [t / 100 for t in range(0, 101, 10)]
 IOU_THRESHOLDS = [t / 100 for t in range(50, 100, 5)]
 
@@ -165,11 +165,11 @@ def main(load_lic_cmatrix=False):
     print(f"Prediction time: {time.time() - start_time}")
 
     # -------------------- stored models' confusion matrix --------------------
-    store_model_lic_cmatrix("mask_r-cnn", mrcnn_lic_cmatrix)
-    store_model_lic_cmatrix("yolov5", yolo_lic_cmatrix)
-
-    with open(f"../output/metadata/truth_class_counter.json", "w") as outf:
-        outf.write(json.dumps(truth_class_counter))
+    # store_model_lic_cmatrix("mask_r-cnn", mrcnn_lic_cmatrix)
+    # store_model_lic_cmatrix("yolov5", yolo_lic_cmatrix)
+    #
+    # with open(f"../output/metadata/truth_class_counter.json", "w") as outf:
+    #     outf.write(json.dumps(truth_class_counter))
 
     # ---------- evaluate models' predictions using confusion matrix ----------
     mrcnn_eval_df, mrcnn_lic_metrics = evaluate_model(
@@ -197,16 +197,16 @@ def main(load_lic_cmatrix=False):
     )
 
     # display barchart AP101 at different IoU thresholds
-    mut.output_ap101_barchart_at_iou(mrcnn_lic_metrics, yolo_lic_metrics, 0.5)
     mut.output_ap101_barchart_at_iou(mrcnn_lic_metrics, yolo_lic_metrics, 0.75)
+    mut.output_ap101_barchart_at_iou(mrcnn_lic_metrics, yolo_lic_metrics, 0.85)
 
     mut.output_tp_barchart_at_iou_conf(
-        truth_class_counter, mrcnn_lic_cmatrix, yolo_lic_cmatrix, 0.75, 0.5
+        truth_class_counter, mrcnn_lic_cmatrix, yolo_lic_cmatrix, 0.85, 0.5
     )
 
     print(f"Evaluation time: {time.time() - start_time}")
 
 
 if __name__ == "__main__":
-    main()
-    # main(load_lic_cmatrix=True)
+    # main()
+    main(load_lic_cmatrix=True)

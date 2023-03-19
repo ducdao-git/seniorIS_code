@@ -1,3 +1,4 @@
+import os.path
 import random
 
 import matplotlib.pyplot as plt
@@ -337,6 +338,9 @@ def output_linechart_w_dataframe(
 ):
     df = pandas_dataframe
     df_keys = pandas_dataframe.keys()
+
+    if not os.path.exists("../output/metadata/"):
+        os.mkdir("../output/metadata/")
 
     if not outfile_name:
         outfile_name = "_".join(df.keys)
