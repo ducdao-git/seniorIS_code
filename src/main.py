@@ -9,7 +9,7 @@ import main_utils as mut
 import nuim_util as nuu
 from label_mapping import supported_label
 
-NUIMG_INDEX = range(5, 10)
+NUIMG_INDEX = range(0, 1)
 CONFIDENCE_THRESHOLDS = [t / 100 for t in range(0, 101, 10)]
 IOU_THRESHOLDS = [t / 100 for t in range(50, 100, 5)]
 
@@ -188,7 +188,7 @@ def main(load_lic_cmatrix=False):
     })
     mut.output_linechart_w_dataframe(
         pandas_dataframe=compare_model_mean_ap101_df,
-        title="mAP101 of Mask R-CNN and YOLOv5 at different IoU thresholds",
+        title="mAP101 of Mask R-CNN and YOLOv5 at different IoU thresholds  ",
         xlabel="IoU threshold",
         ylabel="mAP101 value",
         l1style="-hm",
@@ -199,6 +199,10 @@ def main(load_lic_cmatrix=False):
     # display barchart AP101 at different IoU thresholds
     mut.output_ap101_barchart_at_iou(mrcnn_lic_metrics, yolo_lic_metrics, 0.5)
     mut.output_ap101_barchart_at_iou(mrcnn_lic_metrics, yolo_lic_metrics, 0.75)
+
+    mut.output_tp_barchart_at_iou_conf(
+        truth_class_counter, mrcnn_lic_cmatrix, yolo_lic_cmatrix, 0.75, 0.5
+    )
 
     print(f"Evaluation time: {time.time() - start_time}")
 

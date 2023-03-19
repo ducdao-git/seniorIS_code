@@ -239,7 +239,7 @@ def output_ap101_barchart_at_iou(
 
     title = f'AP101 of Mask R-CNN and YOLOv5 per class at t_iou = {t_iou}'
     plt.title(title, fontsize=14, pad=20)
-    plt.xlabel('IoU Threshold', fontsize=14)
+    plt.xlabel('Class Label', fontsize=14)
     plt.ylabel('AP101 Score', fontsize=14)
 
     index = np.arange(len(labels))
@@ -262,6 +262,67 @@ def output_ap101_barchart_at_iou(
 
     plt.savefig(
         f"../output/Mask_R-CNN_vs_YOLOv5_AP101_at_iou{t_iou}.png", dpi=300
+    )
+
+
+def output_tp_barchart_at_iou_conf(
+        truth_counter, model1_lic_cmatrix, model2_lic_cmatrix, t_iou, t_conf
+):
+    labels = sorted(
+        set(truth_counter.keys()).union(set(model1_lic_cmatrix.keys())).union(
+            set(model2_lic_cmatrix.keys())
+        )
+    )
+
+    t_counter, m1_counter, m2_counter = list(), list(), list()
+    for label in sorted(labels):
+        t_counter.append(
+            truth_counter[label] if label in truth_counter else 0
+        )
+
+        m1_counter.append(
+            model1_lic_cmatrix[label][t_iou][t_conf][1][1] if
+            label in model1_lic_cmatrix else 0
+        )
+
+        m2_counter.append(
+            model2_lic_cmatrix[label][t_iou][t_conf][1][1] if
+            label in model2_lic_cmatrix else 0
+        )
+
+    plt.subplots()
+
+    title = f'Models\'s TP vs. ground-truth per class at t_iou={t_iou}, ' \
+            f't_conf={t_conf}  '
+
+    plt.title(title, fontsize=14, pad=20)
+    plt.xlabel('Class Label', fontsize=14)
+    plt.ylabel('True Positive Count', fontsize=14)
+
+    index = np.arange(len(labels))
+    bar_width = 0.2
+    opacity = 0.8
+
+    plt.bar(
+        index, m1_counter, bar_width,
+        alpha=opacity, color='m', label='Mask R-CNN'
+    )
+
+    plt.bar(
+        index + bar_width, m2_counter, bar_width,
+        alpha=opacity, color='g', label='YOLOv5'
+    )
+
+    plt.bar(
+        index + bar_width * 2, t_counter, bar_width,
+        alpha=opacity, color='tab:orange', label='Ground-truth'
+    )
+
+    plt.xticks(index + bar_width, labels)
+    plt.legend()
+
+    plt.savefig(
+        f"../output/true_positive_at_iou{t_iou}_conf{t_conf}.png", dpi=300
     )
 
 
