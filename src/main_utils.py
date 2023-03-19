@@ -124,7 +124,7 @@ def init_lic_cmatrix(supported_labels, t_ious, t_confidences):
 
 
 def update_lic_cmatrix(
-    updating_lic, pred_truth_label_map, t_confidences, t_ious
+        updating_lic, pred_truth_label_map, t_confidences, t_ious
 ):
     for t_iou in t_ious:
         for t_conf in t_confidences:
@@ -186,6 +186,20 @@ def get_lic_metrics(lic_cmatrix):
     return lic_metrics
 
 
+def get_ap101_at_iou(lic_metrics, t_iou):
+    class_ap101 = dict()
+
+    for label in lic_metrics.keys():
+        if t_iou not in lic_metrics[label].keys():
+            raise ValueError(
+                f"No AP101 measured at t_iou={t_iou} for {label} class"
+            )
+
+        class_ap101[label] = lic_metrics[label][t_iou]["AP101"]
+
+    return class_ap101
+
+
 def get_i_mean_ap(lic_metrics):
     supported_labels = list(lic_metrics.keys())
     supported_ious = sorted(list(lic_metrics[supported_labels[0]].keys()))
@@ -209,24 +223,70 @@ def get_i_mean_ap(lic_metrics):
     }
 
 
-def display_dataframe(
-    pandas_dataframe,
-    title="",
-    xlabel="",
-    ylabel="",
-    l1style="-Dr",
-    l2style="-vc",
-    outfile_name=None,
+def output_ap101_barchart_at_iou(
+        model1_lic_metrics, model2_lic_metrics, t_iou
+):
+    model1_ap101_at_iou = get_ap101_at_iou(model1_lic_metrics, t_iou)
+    model2_ap101_at_iou = get_ap101_at_iou(model2_lic_metrics, t_iou)
+
+    labels, m1_aps, m2_aps = list(), list(), list()
+    for label in sorted(model1_ap101_at_iou.keys()):
+        labels.append(label)
+        m1_aps.append(model1_ap101_at_iou[label])
+        m2_aps.append(model2_ap101_at_iou[label])
+
+    plt.subplots()
+
+    title = f'AP101 of Mask R-CNN and YOLOv5 per class at t_iou = {t_iou}'
+    plt.title(title, fontsize=14, pad=20)
+    plt.xlabel('IoU Threshold', fontsize=14)
+    plt.ylabel('AP101 Score', fontsize=14)
+
+    index = np.arange(len(labels))
+    bar_width = 0.2
+    opacity = 0.8
+
+    plt.bar(
+        index, m1_aps, bar_width,
+        alpha=opacity, color='m', label='Mask R-CNN'
+    )
+
+    plt.bar(
+        index + bar_width, m2_aps, bar_width,
+        alpha=opacity, color='g', label='YOLOv5'
+    )
+
+    plt.ylim(0, 1)
+    plt.xticks(index + bar_width / 2, labels)
+    plt.legend()
+
+    plt.savefig(
+        f"../output/Mask_R-CNN_vs_YOLOv5_AP101_at_iou{t_iou}.png", dpi=300
+    )
+
+
+def output_linechart_w_dataframe(
+        pandas_dataframe,
+        title="",
+        xlabel="",
+        ylabel="",
+        l1style="-Dr",
+        l2style="-vc",
+        outfile_name=None,
 ):
     df = pandas_dataframe
     df_keys = pandas_dataframe.keys()
 
-    df.to_csv(f"../output/{outfile_name}.csv", encoding="utf-8", index=False)
-    # print(tabulate(df, headers="keys", tablefmt="psql"))
+    if not outfile_name:
+        outfile_name = "_".join(df.keys)
+
+    df.to_csv(
+        f"../output/metadata/{outfile_name}.csv", encoding="utf-8", index=False
+    )
 
     plt.figure(random.randint(len(title) + 100, len(title) + 100 * 2))
 
-    plt.title(title, fontsize=14)
+    plt.title(title, fontsize=14, pad=20)
     plt.xlabel(xlabel, fontsize=14)
     plt.ylabel(ylabel, fontsize=14)
 
@@ -242,8 +302,5 @@ def display_dataframe(
     plt.plot(df[df_keys[0]], df[df_keys[1]], l1style, label=df_keys[1])
     plt.plot(df[df_keys[0]], df[df_keys[2]], l2style, label=df_keys[2])
     plt.legend(loc="upper right")
-
-    if not outfile_name:
-        outfile_name = "_".join(df.keys)
 
     plt.savefig(f"../output/{outfile_name}.png", dpi=300)

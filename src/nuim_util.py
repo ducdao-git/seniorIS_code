@@ -8,10 +8,10 @@ from truth_class import TruthClass
 
 class NuImgSample:
     def __init__(
-        self,
-        nuimg: NuImages,
-        sample_token: str,
-        nuim_mrcnn_label_only: bool = False,
+            self,
+            nuimg: NuImages,
+            sample_token: str,
+            nuim_mrcnn_label_only: bool = False,
     ):
         self.nuimg = nuimg
         self.sample_img = self.nuimg.get(
@@ -92,7 +92,7 @@ class NuImgSample:
         return objs_cat
 
 
-def get_truth_objs(nuim_obj, img_index):
+def get_truth_objs(nuim_obj, img_index, truth_label_counter):
     # ------------ get the image ------------ #
     sample_img = nuim_obj.sample[img_index]
     sample_img = NuImgSample(
@@ -116,5 +116,10 @@ def get_truth_objs(nuim_obj, img_index):
             mask=t_masks[i],
         )
         truth_objs.append(truth_obj)
+
+        if truth_obj.t_label not in truth_label_counter.keys():
+            truth_label_counter[truth_obj.t_label] = 1
+        else:
+            truth_label_counter[truth_obj.t_label] += 1
 
     return sample_img_path, truth_objs
