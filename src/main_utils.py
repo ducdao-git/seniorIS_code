@@ -320,6 +320,7 @@ def output_tp_barchart_at_iou_conf(
     )
 
     plt.xticks(index + bar_width, labels)
+    plt.yticks([v * 1000 for v in [5, 15, 25, 35, 45]])
     plt.legend()
 
     plt.savefig(
