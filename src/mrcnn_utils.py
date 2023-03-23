@@ -1,7 +1,7 @@
 import torch
 
 from label_mapping import supported_label
-from predict_class import PredictClass
+from predict_object import PredictObject
 
 
 def get_mrcnn_outputs(
@@ -50,7 +50,7 @@ def get_mrcnn_outputs(
 def mrcnn_output_to_objs(labels, scores, boxes, masks):
     pred_objs = list()
     for i in range(len(labels)):
-        pred_obj = PredictClass(
+        pred_obj = PredictObject(
             label=labels[i],
             score=scores[i],
             bbox=boxes[i],

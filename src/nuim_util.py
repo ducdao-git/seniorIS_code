@@ -3,7 +3,7 @@ import os.path as osp
 from nuimages import NuImages
 
 from label_mapping import nuim_supported_label_mapping
-from truth_class import TruthClass
+from truth_object import TruthObject
 
 
 class NuImgSample:
@@ -110,7 +110,7 @@ def get_truth_objs(nuim_obj, img_index, truth_label_counter):
 
     truth_objs = list()
     for i in range(len(t_labels)):
-        truth_obj = TruthClass(
+        truth_obj = TruthObject(
             label=t_labels[i],
             bbox=t_bboxes[i],
             mask=t_masks[i],

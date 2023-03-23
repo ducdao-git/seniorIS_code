@@ -12,7 +12,7 @@ import metrics as m
 import mrcnn_utils as mru
 import yolo_utils as ylu
 
-NUIM_DATAROOT = "../input/nuImage"
+NUIM_DATAROOT = "../input/nuImages"
 MRCNN_WEIGHTS = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
 PROCESSOR = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

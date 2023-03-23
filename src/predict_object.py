@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class PredictClass:
+class PredictObject:
     def __init__(self, label, score, bbox, mask):
         self._label = str(label)
         self._score = score

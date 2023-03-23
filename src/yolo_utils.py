@@ -1,7 +1,7 @@
 import torch
 
 from label_mapping import supported_label
-from predict_class import PredictClass
+from predict_object import PredictObject
 
 
 def get_yolo_predict_objs(
@@ -21,7 +21,7 @@ def get_yolo_predict_objs(
     for _, row in outputs.iterrows():
         if not supported_label_only or row["name"] in supported_label:
             pred_objs.append(
-                PredictClass(
+                PredictObject(
                     label=row["name"],
                     score=row["confidence"],
                     bbox=[row["xmin"], row["ymin"], row["xmax"], row["ymax"]],

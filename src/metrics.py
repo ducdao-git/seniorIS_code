@@ -152,7 +152,11 @@ def multilabel_cmatrix(pred_truth_label_map, t_confidence, t_iou):
             preds_clabel.append(preds[i])
             truths_clabel.append(truths[i])
 
-        else:
+        # elif ious[i] and ious[i] < t_iou:
+        #     preds_clabel.append("None")
+        #     truths_clabel.append(truths[i])
+
+        else:  # only happen when truth label has the value of None
             preds_clabel.append(preds[i])
             truths_clabel.append("None")
 
@@ -259,6 +263,8 @@ def preds_choose_truths_map(truth_objs, pred_objs, iou_threshold=0):
                 }
             )
 
+    # from pprint import pprint
+    # pprint(pred_truth_map)
     return pred_truth_map
 
 

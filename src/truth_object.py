@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class TruthClass:
+class TruthObject:
     def __init__(self, label, bbox, mask):
         self._label = str(label)
         self._bbox = np.array(bbox)
