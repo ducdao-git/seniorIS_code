@@ -15,7 +15,7 @@ import yolo_utils as ylu
 NUIM_DATAROOT = "../input/nuImages"
 MRCNN_WEIGHTS = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
 # PROCESSOR = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-PROCESSOR = torch.device("cuda")
+PROCESSOR = torch.device("cpu")
 
 
 def initialization():
