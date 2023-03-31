@@ -14,10 +14,17 @@ import yolo_utils as ylu
 
 NUIM_DATAROOT = "../input/nuImages"
 MRCNN_WEIGHTS = torch_model.MaskRCNN_ResNet50_FPN_Weights.DEFAULT
-PROCESSOR = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# PROCESSOR = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+PROCESSOR = torch.device("cuda")
 
 
 def initialization():
+    """
+    program initialization that generate the nuImages object (to asset
+    images dataset), the mask r-cnn and yolo model
+
+    :return: nuImages object, mask r-cnn model object, yolov5 model object
+    """
     nuim_obj = NuImages(
         dataroot=NUIM_DATAROOT,
         version="v1.0-val",
@@ -31,6 +38,7 @@ def initialization():
             weights=MRCNN_WEIGHTS,
             progress=True,
             num_classes=91,
+            # coco define 91 class label but only use 80 in the dataset
         )
         .to(PROCESSOR)
         .eval()
@@ -40,7 +48,7 @@ def initialization():
         torch.hub.load(
             repo_or_dir="ultralytics/yolov5",
             model="yolov5x",
-            pretrained=True,
+            pretrained=True,  # default to use COCO pretrained weight
             verbose=False,
         )
         .to(PROCESSOR)
@@ -51,6 +59,14 @@ def initialization():
 
 
 def get_mrcnn_predict_objs(mrcnn_model, img_path):
+    """
+    generate object prediction using the mask r-cnn model for an image
+
+    :param mrcnn_model: the mask r-cnn model object
+    :param img_path: the path to the image to generate prediction for
+
+    :return: list of PredictObject (defined in predict_object.py)
+    """
     img_tensor = read_image(img_path)
     transform_img_tensor = MRCNN_WEIGHTS.transforms()(img_tensor)
 
@@ -67,6 +83,14 @@ def get_mrcnn_predict_objs(mrcnn_model, img_path):
 
 
 def get_yolo_predict_objs(yolo_model, img_path):
+    """
+    generate object prediction using the yolo version 5 model for an image
+
+    :param yolo_model: the yolov5 model object
+    :param img_path: the path to the image to generate prediction for
+
+    :return: list of PredictObject (defined in predict_object.py)
+    """
     pred_objs = ylu.get_yolo_predict_objs(
         yolo_model=yolo_model,
         img_path=img_path,
@@ -77,6 +101,21 @@ def get_yolo_predict_objs(yolo_model, img_path):
 
 
 def get_pred_truth_map(truth_objs, pred_objs):
+    """
+    mapping the TruthObject list with the PredictObject list
+
+    :param truth_objs: list of TruthObject (defined in truth_object.py)
+    :param pred_objs: list of PredictObject (defined in predict_object.py)
+
+    :return: 2 lists of dictionary: pt_map and pt_lmap
+    - pt_map: a list of dict where each dict has 3 fields -- one for a
+        TruthObject, one for a PredictObject, and one for the IoU score between
+        the predicted and truth object
+    - pt_lmap: a list of dict where each dict has 3 fields -- one for a
+        TruthObject's label, one for a PredictObject's label, one for
+        PredictObject's confidence score, and one for the IoU score between the
+        predicted and truth object
+    """
     pt_map = m.preds_choose_truths_map(truth_objs, pred_objs)
 
     pt_lmap = {
@@ -107,6 +146,29 @@ def get_pred_truth_map(truth_objs, pred_objs):
 
 
 def init_lic_cmatrix(supported_labels, t_ious, t_confidences):
+    """
+    initialize an empty nested dictionary to store the confusion matrix in.
+    the nested dict will have the following format:
+    {
+        <label> : {
+            <IoU_threshold> : {
+                <confidence_threshold>: {
+                    <a 2D numpy array repr confusion matrix with for this
+                    label at this particular IoU and confidence threshold>
+                },
+                ...,
+            },
+            ...,
+        },
+        ..,
+    }
+
+    :param supported_labels: list of str, each str repr a supported label
+    :param t_ious: list of float, each float repr an IoU threshold
+    :param t_confidences: list of float, each float repr a confidence threshold
+
+    :return: return the nested dictionary (described previously)
+    """
     lic = dict()
 
     for label in supported_labels:
@@ -127,6 +189,26 @@ def init_lic_cmatrix(supported_labels, t_ious, t_confidences):
 def update_lic_cmatrix(
         updating_lic, pred_truth_label_map, t_confidences, t_ious
 ):
+    """
+    updating a lic_cmatric using a list of dictionary where each
+    dict contain the ground-truth label, predicted label, predicted
+    confidence score, and IoU score. The confusion matrix for each label at
+    each pair of IoU and confidence threshold is generated using the
+    `multilabel_cmatrix` function defined in metrics.py
+
+    :param updating_lic: the lic_cmatrix to be updated. the lic_cmatrix is a
+        nested dict that is first initialized with the `init_lic_cmatrix`
+        function
+    :param pred_truth_label_map: list of dictionary where each
+        dict contain the ground-truth label, predicted label, predicted
+        confidence score, and IoU score.
+    :param t_confidences: list of confidence threshold in which the function
+        update the confusion matrix for
+    :param t_ious: list of IoU threshold in which the function update the
+        confusion matrix for
+
+    :return: None
+    """
     for t_iou in t_ious:
         for t_conf in t_confidences:
             ml_cmatrix = m.multilabel_cmatrix(
@@ -140,6 +222,46 @@ def update_lic_cmatrix(
 
 
 def get_lic_metrics(lic_cmatrix):
+    """
+    helper function that call function in metrics.py to calculate different
+    metrics used to evaluate the model for each label at different
+    combination of IoU and confidence threshold. These metrics are: accuracy,
+    precision, recall, f-score (f1-score), 11-point and 101-point interpolation
+    mAP. These calculated metric is then stored in a nested dictionary with
+    the following format:
+    {
+        <label>: {
+            <IoU_threshold>: {
+                <confidence_threshold_0>: {
+                    "accuracy": a float,
+                    "precision": a float,
+                    "recall": a float,
+                    "f1": a float,
+                },
+                ...,
+                <confidence_threshold_n>: {
+                    "accuracy": a float,
+                    "precision": a float,
+                    "recall": a float,
+                    "f1": a float,
+                },
+                "highest_f1": a float,
+                "highest_f1_at_conf": a float repr a confidence threshold,
+                "AP11": a float,
+                "AP101": a float,
+            },
+            ...,
+        },
+        ...,
+    }
+
+    :param lic_cmatrix: the nested dictionary (keys level: label -> IoU
+        threshold -> confidence threshold) used to store the confusion matrix (
+        a 2D list)
+
+    :return: the nested dict that stored evaluated metrics (described
+    previously)
+    """
     lic_metrics = dict()
 
     for label in lic_cmatrix.keys():
@@ -188,6 +310,17 @@ def get_lic_metrics(lic_cmatrix):
 
 
 def get_ap101_at_iou(lic_metrics, t_iou):
+    """
+    get a list of 101-point interpolation AP value of different classes at
+    an IoU threshold value
+
+    :param lic_metrics: the nested dict that hold all the computed metrics,
+        generated by function `get_lic_metrics`
+    :param t_iou: a float repr an IoU threshold
+
+    :return: a list of 101-point interpolation AP value of different classes at
+    an IoU threshold value
+    """
     class_ap101 = dict()
 
     for label in lic_metrics.keys():
@@ -202,6 +335,17 @@ def get_ap101_at_iou(lic_metrics, t_iou):
 
 
 def get_i_mean_ap(lic_metrics):
+    """
+    get mean Average Precision (mAP) of the model at each different IoU
+    threshold
+
+    :param lic_metrics: the nested dict that hold all the computed metrics,
+        generated by the function `get_lic_metrics`
+
+    :return: a dict with 3 fields repr list of IoU threshold, list of
+    11-point, and list of 101-point interpolation mAP. The 3 lists'
+    elements are correspond by position
+    """
     supported_labels = list(lic_metrics.keys())
     supported_ious = sorted(list(lic_metrics[supported_labels[0]].keys()))
 
@@ -225,10 +369,26 @@ def get_i_mean_ap(lic_metrics):
 
 
 def output_ap101_barchart_at_iou(
-        model1_lic_metrics, model2_lic_metrics, t_iou
+        mrcnn_lic_metrics, yolov5_lic_metrics, t_iou
 ):
-    model1_ap101_at_iou = get_ap101_at_iou(model1_lic_metrics, t_iou)
-    model2_ap101_at_iou = get_ap101_at_iou(model2_lic_metrics, t_iou)
+    """
+    generate a barchart that compare the 101-point interpolation AP value of
+    Mask R-CNN and YOLO model per class at a specific IoU threshold. Can be
+    adapted and generalize to comparing any 2 model, not just Mask R-CNN
+    and YOLO. The generated figure is saved in the `output` directory.
+
+    :param mrcnn_lic_metrics: the nested dict that hold all the computed
+        metrics, generated by the function `get_lic_metrics` for the Mask R-CNN
+        model
+    :param yolov5_lic_metrics: the nested dict that hold all the computed
+        metrics, generated by the function `get_lic_metrics` for the YOLOv5
+        model
+    :param t_iou: a float repr an IoU threshold
+
+    :return: None
+    """
+    model1_ap101_at_iou = get_ap101_at_iou(mrcnn_lic_metrics, t_iou)
+    model2_ap101_at_iou = get_ap101_at_iou(yolov5_lic_metrics, t_iou)
 
     labels, m1_aps, m2_aps = list(), list(), list()
     for label in sorted(model1_ap101_at_iou.keys()):
@@ -267,11 +427,31 @@ def output_ap101_barchart_at_iou(
 
 
 def output_tp_barchart_at_iou_conf(
-        truth_counter, model1_lic_cmatrix, model2_lic_cmatrix, t_iou, t_conf
+        truth_counter, mrcnn_lic_cmatrix, yolov5_lic_cmatrix, t_iou, t_conf
 ):
+    """
+    generate a barchart that compare the number of occurrence of each class
+    predicted by mask r-cnn, yolov5, versus the truth occurrence at a
+    specific IoU and confidence threshold. Can be adapted and generalize to
+    comparing any 2 model, not just Mask R-CNN and YOLO. The generated figure
+    is saved in the `output` directory.
+
+    :param truth_counter: a dict that hold the number of ground-truth
+        occurrence of each class across all processed images
+    :param mrcnn_lic_cmatrix: the nested dict that hold the confusion
+        matrices initialized by the function `init_lic_cmatrix` and updated by
+        `update_lic_cmatrix` for the Mask R-CNN model
+    :param yolov5_lic_cmatrix: the nested dict that hold the confusion
+        matrices initialized by the function `init_lic_cmatrix` and updated by
+        `update_lic_cmatrix` for the YOLO model
+    :param t_iou: a float repr an IoU threshold
+    :param t_conf: a float repr a confidence threshold
+
+    :return: None
+    """
     labels = sorted(
-        set(truth_counter.keys()).union(set(model1_lic_cmatrix.keys())).union(
-            set(model2_lic_cmatrix.keys())
+        set(truth_counter.keys()).union(set(mrcnn_lic_cmatrix.keys())).union(
+            set(yolov5_lic_cmatrix.keys())
         )
     )
 
@@ -282,13 +462,13 @@ def output_tp_barchart_at_iou_conf(
         )
 
         m1_counter.append(
-            model1_lic_cmatrix[label][t_iou][t_conf][1][1] if
-            label in model1_lic_cmatrix else 0
+            mrcnn_lic_cmatrix[label][t_iou][t_conf][1][1] if
+            label in mrcnn_lic_cmatrix else 0
         )
 
         m2_counter.append(
-            model2_lic_cmatrix[label][t_iou][t_conf][1][1] if
-            label in model2_lic_cmatrix else 0
+            yolov5_lic_cmatrix[label][t_iou][t_conf][1][1] if
+            label in yolov5_lic_cmatrix else 0
         )
 
     plt.subplots()
@@ -337,6 +517,25 @@ def output_linechart_w_dataframe(
         l2style="-vc",
         outfile_name=None,
 ):
+    """
+    generate a linechart for a dataframe of 3 columns. The generated chart
+    is stored in the `output` directory
+
+    :param pandas_dataframe: a dataframe of 3 columns. The first column
+        value is used for x-axis value. While the second and third column is
+        plotted as y-values based on x-value
+    :param title: str repr the title of the figure
+    :param xlabel: str repr the label of the x-axis
+    :param ylabel: str repr the label of the y-axis
+    :param l1style: str repr style of the first line (second column). These
+        style string are defined in matplotlib line chart style
+    :param l2style: str repr style of the first line (third column). These
+        style string are defined in matplotlib line chart style
+    :param outfile_name: str repr the name of the output file, this file
+        will be put in the `output` directory
+
+    :return: None
+    """
     df = pandas_dataframe
     df_keys = pandas_dataframe.keys()
 

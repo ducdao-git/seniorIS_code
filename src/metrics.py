@@ -2,6 +2,16 @@ import sklearn.metrics as skm
 
 
 def calc_ap(precisions, recalls, interpolation_num=11):
+    """
+    Calculate N-point interpolation AP from a list of precision and a list
+    of recalls
+
+    :param precisions: list of float, each float repr a precision value
+    :param recalls: list of float, each float repr a recall value
+    :param interpolation_num: number of interpolation point, default: N=11
+
+    :return: a float repr the value the N-point interpolation AP
+    """
     assert len(precisions) == len(recalls)
 
     # -------------- smooth out precision by the max right term --------------
@@ -43,6 +53,16 @@ def calc_ap(precisions, recalls, interpolation_num=11):
 
 
 def calc_aprf1(confusion_matrix):
+    """
+    helper function that call other functions to calculate accuracy,
+    precision, recall, and f1 score for a confusion matrix.
+
+    :param confusion_matrix: a confusion matrix for a label at a particular
+        IoU and confidence threshold. the confusion matrix is a 2D list, assume
+        to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
+    :return: <dict> has 4 fields accuracy, precision, recall, and f1 score
+    """
     accuracy = calc_accuracy(confusion_matrix)
 
     precision = calc_precision(confusion_matrix)
@@ -59,6 +79,14 @@ def calc_aprf1(confusion_matrix):
 
 
 def calc_f1(precision, recall):
+    """
+    calculate the f1 score with a precision and recall value
+
+    :param precision: a float repr the precision at an IoU threshold
+    :param recall: a float repr the precision at that confidence threshold
+
+    :return: <float> the f1 score
+    """
     numerator = 2 * precision * recall
     denominator = precision + recall
 
@@ -71,7 +99,11 @@ def calc_f1(precision, recall):
 def calc_accuracy(confusion_matrix):  # list[list[int]]
     """
     calculate the accuracy value for the given confusion matrix
-    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
+    :param confusion_matrix: a confusion matrix for a label at a particular
+        IoU and confidence threshold. the confusion matrix is a 2D list, assume
+        to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
     :return: <float> the accuracy value
     """
     true_negative, false_positive = confusion_matrix[0]
@@ -92,7 +124,11 @@ def calc_accuracy(confusion_matrix):  # list[list[int]]
 def calc_precision(confusion_matrix):  # list[list[int]]
     """
     calculate the precision value for the given confusion matrix
-    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
+    :param confusion_matrix: a confusion matrix for a label at a particular
+        IoU and confidence threshold. the confusion matrix is a 2D list, assume
+        to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
     :return: <float> the precision value
     """
     _, false_positive = confusion_matrix[0]
@@ -113,7 +149,11 @@ def calc_precision(confusion_matrix):  # list[list[int]]
 def calc_recall(confusion_matrix):
     """
     calculate the recall value for the given confusion matrix
-    :param confusion_matrix: assume to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
+    :param confusion_matrix: a confusion matrix for a label at a particular
+        IoU and confidence threshold. the confusion matrix is a 2D list, assume
+        to have format [[<TN>, <FP>], [<FN>, <TP>]]
+
     :return: <float> the recall value
     """
     _, false_positive = confusion_matrix[0]
@@ -132,6 +172,25 @@ def calc_recall(confusion_matrix):
 
 
 def multilabel_cmatrix(pred_truth_label_map, t_confidence, t_iou):
+    """
+    generate confusion matrix for each label at a particular IoU and
+    confidence threshold. Before computed the confusion matrix, we preprocess
+    the predicted label list and truth label list in pred_truth_label_map. We
+    set a predicted label to None if the confidence score is lower than the
+    confidence threshold. On the other hands, we set ground-truth label to None
+    if the IoU score is lower than the IoU threshold.
+
+    :param pred_truth_label_map: a dict contain 4 fields: iou_scores,
+        confidence_scores, pred_labels, and truth_labels. Each of the field
+        is a list and elements in each list are positional corresponding with
+        elements of other list
+    :param t_confidence: a float repr a confidence threshold
+    :param t_iou: a float repr an IoU threshold
+
+    :return: <dict> with key be class name and value is the confusion matrix
+    for that class at the IoU threshold t_iou and confidence threshold of
+    t_confidence
+    """
     ious = pred_truth_label_map["iou_scores"]
     confis = pred_truth_label_map["confidence_scores"]
     preds = pred_truth_label_map["pred_labels"]
@@ -192,18 +251,19 @@ def preds_choose_truths_map(truth_objs, pred_objs, iou_threshold=0):
     """
     This greedy method take a list of predictions assuming the predictions
     are sort from high confident to low confident in the list. For each
-    prediction, the algorithm find the best fit truth box and store the
-    t_box and p_box in a dict. It also made the box map to None if they
-    not fit above the threshold.
+    prediction, the algorithm find the best fit TruthObject (by compute the
+    IoU score between predicted box and ground-truth box) and store the
+    TruthObject and PredictObject in a dict (repr a mapping). It also made the
+    PredictObject map to None if they not fit above the threshold.
 
     return: list of dict. The return list have the same order as the p_boxes
     arg (from prediction with the highest confident to lowest). The return
     dict in the list has form:
     {
         iou_score: <float> repr intersection over union of p_box and t_box
-        pred_obj: <PredictClass> repr a pred object -- has the highest iou
+        pred_obj: <PredictObject> repr a pred object -- has the highest iou
             with the truth_obj compare to other truth obj
-        truth_obj: <TruthClass> repr a truth object -- has the highest iou
+        truth_obj: <TruthObject> repr a truth object -- has the highest iou
             with the pred_obj compare to other pred obj
     }
     """
@@ -269,6 +329,17 @@ def preds_choose_truths_map(truth_objs, pred_objs, iou_threshold=0):
 
 
 def get_box_iou(t_box_cord, p_box_cord):
+    """
+    calculate the IoU score between 2 boxes. Each box is a list of 4
+    coordinate (x_min, y_min, x_max, y_max)
+
+    :param t_box_cord: list of 4 coordinate repr the ground-truth bounding
+        box coordinate
+    :param p_box_cord: list of 4 coordinate repr the predicted bounding box
+        coordinate
+
+    :return: <float> the IoU score between 2 bounding boxes
+    """
     p_box = {
         "x1": p_box_cord[0],
         "y1": p_box_cord[1],

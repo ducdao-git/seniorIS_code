@@ -69,42 +69,43 @@ should work just fine. A list of required package is provided in `requirements.t
 - Change the directory to `src/`. With the configured Python environment from 
 the previous step, we can run the software by calling `python main.py` in the 
 terminal
-  - By default, the software will evaluate the Mask R-CNN and YOLOv5 models on the 
-  nuImage validation set (16445 images). The output of the software is stored in 
-  the `output` directory. 
-    - Note on file name: 
-      - \<model>_lic_cmatrix: is a json that stored confusion matrix in the following format:
-      <pre>
-      {
-        class_label: {
-          IoU_threshold: {
-            confidence_threshold: {
-              confusion_matrix -- 2D list
-            }
-          }
+- By default, the software will evaluate the Mask R-CNN and YOLOv5 models on the 
+nuImage validation set (16445 images). The output of the software is stored in 
+the `output` directory. 
+- Note on output file name: 
+  - \<model>_lic_cmatrix: is a json that stored confusion matrix in the following format:
+  <pre>
+  {
+    class_label: {
+      IoU_threshold: {
+        confidence_threshold: {
+          confusion_matrix -- 2D list
         }
-      }        
-      </pre>
-      - \<model>_lic_cmatrix: is a json that stored the computed metrics in the following format:
-      <pre>
-      {
-        class_label: {
-          IoU_threshold: {
-            confidence_threshold: {
-              "accuracy": f
-              "precision": f
-              "recall": f
-              "f1": f
-            },
-            "highest_f1": f
-            "highest_f1_at_conf": f
-            "AP11": f
-            "AP101": f
-          }
-        }
-      }        
-      </pre>
-
-
+      }
+    }
+  }        
+  </pre>
+  - \<model>_lic_cmatrix: is a json that stored the computed metrics in the following format:
+  <pre>
+  {
+    class_label: {
+      IoU_threshold: {
+        confidence_threshold: {
+          "accuracy": f
+          "precision": f
+          "recall": f
+          "f1": f
+        },
+        "highest_f1": f
+        "highest_f1_at_conf": f
+        "AP11": f
+        "AP101": f
+      }
+    }
+  }        
+  </pre>
+- The software is developed and tested on a `cpu` device, but please feel free 
+to experiment it on a `cuda` device by replacing line 18 with line 17 in file main_utils.py 
+  
 
   
